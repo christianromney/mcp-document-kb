@@ -13,27 +13,27 @@ This document outlines the high-level architecture for the MCP-Document-KB syste
 
 * Components
 
-**1. Note Ingestion & Processing**
-   - Input: Org-mode files from a specified directory.
-   - Processing: Extract text content and generate embeddings (using Ollama).
-   - Output: Data suitable for indexing in Qdrant.
+** Note Ingestion & Processing
+- Input: Org-mode files from a specified directory.
+- Processing: Extract text content and generate embeddings (using Ollama).
+- Output: Data suitable for indexing in Qdrant.
 
-**2. Vector Database (Qdrant)**
-   - Stores document embeddings and associated metadata.
-   - Provides efficient similarity search capabilities.
+** Vector Database (Qdrant)
+- Stores document embeddings and associated metadata.
+- Provides efficient similarity search capabilities.
 
-**3. MCP Server**
-   - API: JSON-RPC 2.0 for handling MCP requests.
-   - Search Endpoint: Queries Qdrant, retrieves related notes and metadata.
-   - Streaming: Utilizes Server-Sent Events (SSE) to return results to LLMs.
+** MCP Server
+- API: JSON-RPC 2.0 for handling MCP requests.
+- Search Endpoint: Queries Qdrant, retrieves related notes and metadata.
+- Streaming: Utilizes Server-Sent Events (SSE) to return results to LLMs.
 
-**4. LLM Integration (Ollama)**
-   - Embedding Models: Local embedding models for generating document embeddings.
-   - LLMs: Local LLMs (e.g., gemma3n) for utilizing the knowledgebase.
+** LLM Integration (Ollama)
+- Embedding Models: Local embedding models for generating document embeddings.
+- LLMs: Local LLMs (e.g., gemma3n) for utilizing the knowledgebase.
 
-**5. Automation**
-   - File System Monitoring: Watches the source directory for changes (additions, modifications, deletions).
-   - Index Management: Automatically updates the Qdrant index based on file system changes.
+** Automation
+- File System Monitoring: Watches the source directory for changes (additions, modifications, deletions).
+- Index Management: Automatically updates the Qdrant index based on file system changes.
 
 * Technology Stack
 
