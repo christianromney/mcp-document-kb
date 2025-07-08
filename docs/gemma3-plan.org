@@ -1,128 +1,52 @@
-#+TITLE: mcp-document-kb - Gemma3 Plan
+#+TITLE: MCP-Document-KB Architectural Plan
 #+AUTHOR: Christian Romney
 #+DATE: 2025-07-08
 #+STARTUP: overview
 #+OPTIONS: toc:2 num:nil
-#+PROPERTY: header-args :mkdirp yes
 
-mcp-document-kb is a local MCP server for semantic search and knowledge graph
-construction from a collection of Emacs org-mode notes.
+* Introduction
+This document outlines the high-level architecture for the MCP-Document-KB system, providing a local, semantic search knowledgebase accessible via the Model Context Protocol (MCP).
 
-* What problem(s) does it strive to solve?
+* Goals
+  - Implement a local semantic search knowledgebase.
+  - Provide access to the knowledgebase via MCP.
 
-The system addresses the lack of powerful semantic search capabilities in
-existing Emacs note-taking workflows, particularly when using Org-mode and
-Org-Roam. While these tools facilitate note creation and linking, the search
-functionality is limited to basic pattern matching (grep/ripgrep). This makes it
-difficult to leverage notes as a "second brain" by discovering connections
-between concepts that are not explicitly linked. 
+* Components
 
-mcp-document-kb aims to provide that semantic search capability, allowing users
-to find related notes even if they don't share exact keywords. It provides a
-private, local, and cost-effective alternative to cloud-based solutions.
+**1. Note Ingestion & Processing**
+   - Input: Org-mode files from a specified directory.
+   - Processing: Extract text content and generate embeddings (using Ollama).
+   - Output: Data suitable for indexing in Qdrant.
 
-* Core abstractions
+**2. Vector Database (Qdrant)**
+   - Stores document embeddings and associated metadata.
+   - Provides efficient similarity search capabilities.
 
-The core abstractions around which mcp-document-kb is built are:
+**3. MCP Server**
+   - API: JSON-RPC 2.0 for handling MCP requests.
+   - Search Endpoint: Queries Qdrant, retrieves related notes and metadata.
+   - Streaming: Utilizes Server-Sent Events (SSE) to return results to LLMs.
 
-- *Semantic Note:* A collection of text, metadata, and an embedding vector representing the content's meaning.
-- *Embedding Vector:* A numerical representation of a note's semantic meaning, enabling similarity search.
-- *Knowledge Search:* The process of querying the knowledge base using a semantic query and retrieving relevant note fragments.
-- *MCP Endpoint:* A standardized API for interacting with the knowledge base, facilitating integration with LLMs.
+**4. LLM Integration (Ollama)**
+   - Embedding Models: Local embedding models for generating document embeddings.
+   - LLMs: Local LLMs (e.g., gemma3n) for utilizing the knowledgebase.
 
-* Primary operations
+**5. Automation**
+   - File System Monitoring: Watches the source directory for changes (additions, modifications, deletions).
+   - Index Management: Automatically updates the Qdrant index based on file system changes.
 
-The primary operations exposed by the system are:
+* Technology Stack
 
-- *Semantic Search:* Given a query, return a ranked list of relevant note fragments and metadata.
-- *Metadata Retrieval:* Retrieve metadata (file path, last modified timestamp) for a specific note.
-- *Knowledge Graph Traversal (Future):* Explore relationships between notes to construct a knowledge graph.
-- *Note Ingestion/Update (Implicit):* Automatic updates to the knowledge base upon modification of source notes.
+  - Language: Clojure
+  - Database: Qdrant
+  - LLMs: Ollama (gemma3n, embedding models)
+  - API: JSON-RPC 2.0, Server-Sent Events (SSE)
+  - Documentation: Org-mode, Mermaid diagrams.
 
-* Architectural Components
+* Workflow
 
-#+BEGIN_SRC mermaid :file docs/tangle/gemma3-architecture.png :exports both
-graph LR
-    A[Org-mode Notes] --> B(Note Ingestion & Processing);
-    B --> C(Ollama Embedding Model);
-    C --> D(Qdrant Vector Database);
-    D --> E(MCP Server - Clojure);
-    E --> F(Client LLM);
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#ccf,stroke:#333,stroke-width:2px
-#+END_SRC
-
-#+RESULTS:
-[[file:docs/tangle/gemma3-architecture.png]]
-
-The system consists of:
-
-- *Note Ingestion:* Reads and processes Org-mode notes.
-- *Ollama Integration:* Uses Ollama to manage and interact with local embedding models (e.g., gemma3n).
-- *Qdrant Database:* Stores note embeddings and associated metadata.
-- *MCP Server:* A Clojure implementation exposing a JSON-RPC 2.0 API over HTTP with Server-Sent Events. This handles client requests and interacts with the vector database.
-
-* Is it simple?
-
-The system strives for simplicity by leveraging established technologies and focusing on a core functionality: semantic search. It avoids unnecessary complexity by running locally and avoiding external dependencies. It's stateful in the sense that Qdrant maintains the vector index, but the core logic is designed to be modular and extensible. Dependency cycles are minimized by isolating components.
-
-* Fundamental tradeoffs                                           :optional:
-
-- *Local Operation:* Gives up the scalability of a cloud-based solution to gain privacy, cost savings, and control.
-- *Local Models:* Relinquates access to potentially higher-performing or larger models available through cloud APIs. The reliance on local models means that model updates will need to be managed locally as well.
-- *Automatic Updates:* Giving up complete control over the refresh of the knowledge base and placing trust in the automatic update mechanism.
-
-** Benefits
-
-- *Privacy:* Data remains local and under user control.
-- *Cost Savings:* No recurring fees for cloud services.
-- *Semantic Search:* Finds relevant notes based on meaning, not just keywords.
-- *LLM Integration:* Provides context for LLMs to summarize or cite notes.
-- *Automatic Updates:* Minimizes maintenance effort.
-
-** Risks
-
-- *Model Performance:* Local models may have limited performance compared to cloud-based options.
-- *Hardware Requirements:* Running local LLMs can be resource-intensive.
-- *Maintenance:* Requires managing local models and the vector database.
-
-* Unknowns                                                       :optional:
-
-- Performance characteristics under high query load.
-- Scalability to very large note collections.
-- Effectiveness of automatic note updates under various modification patterns.
-
-* Key indicators for use                                         :optional:
-
-This system is a good fit for:
-
-- Individuals who prioritize privacy and local data storage.
-- Users of Emacs Org-mode who desire improved semantic search capabilities.
-- Those looking to integrate their notes with LLMs for summarization or knowledge discovery.
-
-* Key indicators against use                                     :optional:
-
-This system is a poor fit for:
-
-- Users requiring extremely high-performance search across massive datasets.
-- Those seeking a managed, cloud-based knowledge base solution.
-
-* Alternatives                                                   :optional:
-
-- *Cloud-based knowledge graph services:* Offer scalability and managed infrastructure but lack privacy and cost control.
-- *Simple grep/ripgrep search:* Provides basic pattern matching but lacks semantic understanding.
-- *Obsidian.md:* A note-taking app with some knowledge graph features.
-
-* Other relevant characteristics                                 :optional:
-
-- Written in Clojure, emphasizing elegance and simplicity.
-- Uses JSON-RPC 2.0 over HTTP/SSE for API communication.
-- Supports documentation in Org-mode and Mermaid diagrams.
-
-* Resources
-
-- [[https://orgmode.org/][Emacs Org-mode]]
-- [[https://qdrant.tech/][Qdrant]]
-- [[https://ollama.com/][Ollama]]
-- [[https://www.jsonrpc.org/specification][JSON-RPC 2.0]]
-- [[https://modelcontextprotocol.io][MCP Protocol]]
+  1. Note changes trigger ingestion and processing.
+  2. Processed notes are added/updated in Qdrant.
+  3. An LLM sends an MCP search request.
+  4. The MCP server queries Qdrant.
+  5. The MCP server streams results (notes, metadata) to the LLM via SSE.

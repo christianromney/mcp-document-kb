@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-mcp-document-kb is a Clojure-based MCP (Model Context Protocol) server that provides semantic search capabilities for Emacs org-mode notes. It integrates with local Ollama embedding models and a Qdrant vector database to enable semantic search beyond simple pattern matching.
+`mcp-document-kb` is a Clojure-based project that provides semantic search capabilities for Emacs org-mode notes. It integrates with local Ollama embedding models and a Qdrant vector database to enable semantic search beyond simple pattern matching. These capabilities should be exposed as an MCP (Model Context Protocol) server to enable any tool-capable LLM to consult the knowledgebase.
 
 ## Development Commands
 
@@ -81,7 +81,9 @@ The codebase is currently in early development with:
 
 - The project uses Clojure 1.12.0
 - Tests use `clojure.test` and `test.check` for property-based testing
-- Documentation should be written in org-mode format following the conventions in `README-template.md`
-- Ensure org-tangle works and that output directories exist.
+- Documentation lives in the `docs` folder and should be written in org-mode format.
+  - The `docs/claude-plan.org` file contains a high-level architectural plan for this system. 
+  - The `docs/architecture.org` file should summarize the system architecture and follow the conventions in `docs/templates/architecture.org`.
+- Always ensure org-tangle works and that output directories exist.
 - Diagrams should use Mermaid syntax and be output as PNG. 
-- The system is designed to run locally for privacy and cost benefits
+- The system is designed to run locally for privacy and cost benefits.

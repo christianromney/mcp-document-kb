@@ -7,14 +7,14 @@
 
 * Overview
 
-This document outlines the comprehensive architectural plan for implementing a Clojure-based MCP (Model Context Protocol) server that provides semantic search capabilities for Emacs org-mode notes. The system will integrate with local Ollama embedding models and a Qdrant vector database to enable intelligent knowledge retrieval and graph construction.
+This document outlines the simplified architectural plan for implementing a Clojure-based MCP (Model Context Protocol) server that provides semantic search capabilities for Emacs org-mode notes. The system integrates with local Ollama embedding models and a Qdrant vector database to enable intelligent knowledge retrieval for tool-capable LLMs.
 
 * System Goals
 
 ** Primary Use Cases
-1. *Semantic Search*: Find notes based on semantic similarity rather than keyword matching
-2. *LLM Context Provision*: Provide relevant document fragments to LLMs for summarization and citation
-3. *Knowledge Graph Construction*: Extract semantic topics and concepts to build traversable knowledge graphs
+1. *Semantic Search*: Find notes based on semantic similarity, returning document fragments with metadata including related notes, file paths, and timestamps
+2. *Document Retrieval*: Return complete note documents and their metadata for LLM consumption
+3. *LLM Integration*: Expose search and retrieval capabilities via MCP for summarization, citation, and research
 4. *Automatic Knowledge Management*: Sync knowledge base with file system changes
 5. *Local Privacy-First Operation*: Run entirely locally without external dependencies
 
@@ -25,6 +25,7 @@ This document outlines the comprehensive architectural plan for implementing a C
 - Integration with local Ollama embedding models
 - File system watching for automatic updates
 - Org-mode document parsing and processing
+- Focus on two core operations: search and retrieval
 
 * Architecture Overview
 
@@ -35,30 +36,25 @@ graph TB
     end
     
     subgraph "MCP Document KB System"
-        B --> C[Note Ingestion Pipeline]
+        B --> C[Document Ingestion]
         C --> D[Document Parser]
         D --> E[Text Chunker]
         E --> F[Embedding Generator]
-        F --> G[Vector Store Manager]
-        G --> H[Qdrant Vector DB]
+        F --> G[Qdrant Vector DB]
         
-        I[MCP Server] --> J[JSON-RPC Handler]
-        J --> K[Search Engine]
-        K --> H
-        K --> L[Knowledge Graph Builder]
-        L --> M[Topic Extractor]
-        M --> N[Concept Linker]
+        H[MCP Server] --> I[JSON-RPC Handler]
+        I --> J[Search Service]
+        J --> G
+        J --> K[Document Store]
     end
     
     subgraph "External Services"
-        F --> O[Ollama Embedding API]
-        M --> P[Ollama LLM API]
+        F --> L[Ollama Embedding API]
     end
     
     subgraph "Client Applications"
-        Q[LLM Tools] --> I
-        R[IDE Extensions] --> I
-        S[Web Interface] --> I
+        M[LLM Tools] --> H
+        N[IDE Extensions] --> H
     end
 #+END_SRC
 
@@ -67,7 +63,7 @@ graph TB
 
 * Core Components
 
-** 1. Note Ingestion Pipeline
+** 1. Document Ingestion
 *Purpose*: Process org-mode files and extract searchable content
 
 *Components*:
@@ -75,7 +71,6 @@ graph TB
 - *Document Parser*: Parse org-mode syntax and extract metadata
 - *Text Chunker*: Split documents into semantic chunks for embedding
 - *Embedding Generator*: Generate vectors using local Ollama models
-- *Vector Store Manager*: Manage document storage and indexing in Qdrant
 
 *Key Operations*:
 - =ingest-file=: Process a single org-mode file
@@ -83,51 +78,31 @@ graph TB
 - =update-file=: Handle file modifications
 - =delete-file=: Remove file from index
 
-** 2. MCP Server Layer
+** 2. MCP Server
 *Purpose*: Expose knowledge base capabilities via standardized MCP protocol
 
 *Components*:
 - *JSON-RPC Handler*: Process MCP requests/responses
 - *Tool Registry*: Register available MCP tools
-- *Session Manager*: Handle client connections and state
 - *Transport Layer*: HTTP server with Server-Sent Events support
 
 *MCP Tools*:
-- =search-knowledge-base=: Semantic search with configurable parameters
-- =get-document-fragment=: Retrieve specific document sections
-- =extract-topics=: Generate topic summaries for documents
-- =build-knowledge-graph=: Create linked concept networks
-- =get-document-metadata=: Retrieve file metadata and statistics
+- =search-notes=: Semantic search returning document fragments with metadata
+- =retrieve-note=: Return complete note document and metadata
 
-** 3. Semantic Search Engine
-*Purpose*: Provide intelligent search capabilities beyond keyword matching
+** 3. Search Service
+*Purpose*: Provide semantic search and document retrieval
 
 *Components*:
 - *Query Processor*: Parse and normalize search queries
 - *Vector Search*: Perform similarity search in Qdrant
-- *Result Ranker*: Score and rank results by relevance
-- *Context Builder*: Construct LLM-ready context from results
+- *Result Builder*: Construct responses with fragments, metadata, and related notes
+- *Document Retriever*: Fetch complete documents by identifier
 
-*Search Types*:
-- *Semantic Similarity*: Find conceptually related content
-- *Hybrid Search*: Combine vector and keyword search
-- *Temporal Search*: Find content from specific time periods
-- *Topic-based Search*: Search within specific knowledge domains
-
-** 4. Knowledge Graph Builder
-*Purpose*: Extract and link semantic concepts across documents
-
-*Components*:
-- *Topic Extractor*: Identify main themes and concepts
-- *Concept Linker*: Find relationships between concepts
-- *Graph Store*: Persist knowledge graph structure
-- *Traversal Engine*: Navigate concept relationships
-
-*Graph Operations*:
-- =extract-concepts=: Identify key concepts from documents
-- =link-concepts=: Create relationships between concepts
-- =traverse-graph=: Navigate concept networks
-- =suggest-connections=: Recommend related concepts
+*Operations*:
+- *Semantic Search*: Find conceptually related content with metadata
+- *Document Retrieval*: Return complete note documents
+- *Related Note Discovery*: Identify semantically similar notes
 
 * Data Flow Architecture
 
@@ -144,39 +119,37 @@ graph TB
 2. *Query Processing*: Parse and normalize search parameters
 3. *Vector Generation*: Create embedding for search query
 4. *Similarity Search*: Query Qdrant for similar vectors
-5. *Result Ranking*: Score and rank results by relevance and metadata
-6. *Context Building*: Construct response with document fragments and metadata
-7. *Response Delivery*: Return formatted results via MCP protocol
+5. *Result Building*: Construct response with document fragments, metadata, and related notes
+6. *Response Delivery*: Return formatted results via MCP protocol
+
+** Document Retrieval Flow
+1. *Retrieval Request*: MCP server receives document retrieval request
+2. *Document Lookup*: Find document by identifier in document store
+3. *Metadata Assembly*: Gather file path, timestamps, and related notes
+4. *Response Delivery*: Return complete document with metadata
 
 * Implementation Phases
 
 ** Phase 1: Foundation (Weeks 1-2)
 - Set up core Clojure project structure
-- Implement basic org-mode parsing
-- Create document chunking logic
-- Establish Qdrant connection and basic operations
+- Implement basic org-mode parsing and chunking
+- Establish Qdrant connection and basic vector operations
 - Build file watching infrastructure
+- Create document metadata extraction
 
 ** Phase 2: Core Functionality (Weeks 3-4)
 - Implement Ollama integration for embeddings
-- Create document ingestion pipeline
-- Build semantic search engine
-- Develop MCP server framework
-- Add basic search tools
+- Create document ingestion pipeline with automatic updates
+- Build search service with semantic similarity
+- Develop MCP server framework with JSON-RPC 2.0
+- Implement =search-notes= and =retrieve-note= MCP tools
 
-** Phase 3: Advanced Features (Weeks 5-6)
-- Implement knowledge graph extraction
-- Add topic modeling capabilities
-- Create concept linking algorithms
-- Build graph traversal tools
-- Add hybrid search capabilities
-
-** Phase 4: Integration & Polish (Weeks 7-8)
-- Optimize performance and indexing
-- Add comprehensive error handling
-- Create configuration management
-- Build monitoring and logging
-- Add comprehensive test coverage
+** Phase 3: Integration & Polish (Weeks 5-6)
+- Add related notes discovery and metadata enrichment
+- Optimize performance and indexing strategies
+- Add comprehensive error handling and recovery
+- Create configuration management with sensible defaults
+- Build monitoring, logging, and comprehensive test coverage
 
 * Key Design Decisions
 
