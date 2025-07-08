@@ -1,0 +1,315 @@
+#+TITLE: MCP Document Knowledge Base - Architectural Plan
+#+AUTHOR: Christian Romney
+#+DATE: 2025-07-08
+#+STARTUP: overview
+#+OPTIONS: toc:2 num:nil
+#+PROPERTY: header-args :mkdirp yes
+
+* Overview
+
+This document outlines the comprehensive architectural plan for implementing a Clojure-based MCP (Model Context Protocol) server that provides semantic search capabilities for Emacs org-mode notes. The system will integrate with local Ollama embedding models and a Qdrant vector database to enable intelligent knowledge retrieval and graph construction.
+
+* System Goals
+
+** Primary Use Cases
+1. *Semantic Search*: Find notes based on semantic similarity rather than keyword matching
+2. *LLM Context Provision*: Provide relevant document fragments to LLMs for summarization and citation
+3. *Knowledge Graph Construction*: Extract semantic topics and concepts to build traversable knowledge graphs
+4. *Automatic Knowledge Management*: Sync knowledge base with file system changes
+5. *Local Privacy-First Operation*: Run entirely locally without external dependencies
+
+** Technical Requirements
+- Written in Clojure for power, elegance, and simplicity
+- Local Qdrant vector database for semantic search
+- MCP server exposing JSON-RPC 2.0 over HTTP with Server-Sent Events
+- Integration with local Ollama embedding models
+- File system watching for automatic updates
+- Org-mode document parsing and processing
+
+* Architecture Overview
+
+#+BEGIN_SRC mermaid :file tangle/claude-plan-architecture.png :exports both
+graph TB
+    subgraph "File System"
+        A[Org-mode Notes] -->|File Changes| B[File Watcher]
+    end
+    
+    subgraph "MCP Document KB System"
+        B --> C[Note Ingestion Pipeline]
+        C --> D[Document Parser]
+        D --> E[Text Chunker]
+        E --> F[Embedding Generator]
+        F --> G[Vector Store Manager]
+        G --> H[Qdrant Vector DB]
+        
+        I[MCP Server] --> J[JSON-RPC Handler]
+        J --> K[Search Engine]
+        K --> H
+        K --> L[Knowledge Graph Builder]
+        L --> M[Topic Extractor]
+        M --> N[Concept Linker]
+    end
+    
+    subgraph "External Services"
+        F --> O[Ollama Embedding API]
+        M --> P[Ollama LLM API]
+    end
+    
+    subgraph "Client Applications"
+        Q[LLM Tools] --> I
+        R[IDE Extensions] --> I
+        S[Web Interface] --> I
+    end
+#+END_SRC
+
+#+RESULTS:
+[[file:tangle/claude-plan-architecture.png]]
+
+* Core Components
+
+** 1. Note Ingestion Pipeline
+*Purpose*: Process org-mode files and extract searchable content
+
+*Components*:
+- *File Watcher*: Monitor directory for changes using Java NIO WatchService
+- *Document Parser*: Parse org-mode syntax and extract metadata
+- *Text Chunker*: Split documents into semantic chunks for embedding
+- *Embedding Generator*: Generate vectors using local Ollama models
+- *Vector Store Manager*: Manage document storage and indexing in Qdrant
+
+*Key Operations*:
+- =ingest-file=: Process a single org-mode file
+- =ingest-directory=: Recursively process a directory of files
+- =update-file=: Handle file modifications
+- =delete-file=: Remove file from index
+
+** 2. MCP Server Layer
+*Purpose*: Expose knowledge base capabilities via standardized MCP protocol
+
+*Components*:
+- *JSON-RPC Handler*: Process MCP requests/responses
+- *Tool Registry*: Register available MCP tools
+- *Session Manager*: Handle client connections and state
+- *Transport Layer*: HTTP server with Server-Sent Events support
+
+*MCP Tools*:
+- =search-knowledge-base=: Semantic search with configurable parameters
+- =get-document-fragment=: Retrieve specific document sections
+- =extract-topics=: Generate topic summaries for documents
+- =build-knowledge-graph=: Create linked concept networks
+- =get-document-metadata=: Retrieve file metadata and statistics
+
+** 3. Semantic Search Engine
+*Purpose*: Provide intelligent search capabilities beyond keyword matching
+
+*Components*:
+- *Query Processor*: Parse and normalize search queries
+- *Vector Search*: Perform similarity search in Qdrant
+- *Result Ranker*: Score and rank results by relevance
+- *Context Builder*: Construct LLM-ready context from results
+
+*Search Types*:
+- *Semantic Similarity*: Find conceptually related content
+- *Hybrid Search*: Combine vector and keyword search
+- *Temporal Search*: Find content from specific time periods
+- *Topic-based Search*: Search within specific knowledge domains
+
+** 4. Knowledge Graph Builder
+*Purpose*: Extract and link semantic concepts across documents
+
+*Components*:
+- *Topic Extractor*: Identify main themes and concepts
+- *Concept Linker*: Find relationships between concepts
+- *Graph Store*: Persist knowledge graph structure
+- *Traversal Engine*: Navigate concept relationships
+
+*Graph Operations*:
+- =extract-concepts=: Identify key concepts from documents
+- =link-concepts=: Create relationships between concepts
+- =traverse-graph=: Navigate concept networks
+- =suggest-connections=: Recommend related concepts
+
+* Data Flow Architecture
+
+** Document Ingestion Flow
+1. *File Detection*: File watcher detects changes in org-mode files
+2. *Content Parsing*: Extract text content and metadata from org-mode syntax
+3. *Chunk Generation*: Split content into semantic chunks (paragraphs, sections)
+4. *Embedding Creation*: Generate vectors using Ollama embedding models
+5. *Vector Storage*: Store embeddings and metadata in Qdrant with indexing
+6. *Graph Updates*: Update knowledge graph with new concepts and relationships
+
+** Search Query Flow
+1. *Query Reception*: MCP server receives search request via JSON-RPC
+2. *Query Processing*: Parse and normalize search parameters
+3. *Vector Generation*: Create embedding for search query
+4. *Similarity Search*: Query Qdrant for similar vectors
+5. *Result Ranking*: Score and rank results by relevance and metadata
+6. *Context Building*: Construct response with document fragments and metadata
+7. *Response Delivery*: Return formatted results via MCP protocol
+
+* Implementation Phases
+
+** Phase 1: Foundation (Weeks 1-2)
+- Set up core Clojure project structure
+- Implement basic org-mode parsing
+- Create document chunking logic
+- Establish Qdrant connection and basic operations
+- Build file watching infrastructure
+
+** Phase 2: Core Functionality (Weeks 3-4)
+- Implement Ollama integration for embeddings
+- Create document ingestion pipeline
+- Build semantic search engine
+- Develop MCP server framework
+- Add basic search tools
+
+** Phase 3: Advanced Features (Weeks 5-6)
+- Implement knowledge graph extraction
+- Add topic modeling capabilities
+- Create concept linking algorithms
+- Build graph traversal tools
+- Add hybrid search capabilities
+
+** Phase 4: Integration & Polish (Weeks 7-8)
+- Optimize performance and indexing
+- Add comprehensive error handling
+- Create configuration management
+- Build monitoring and logging
+- Add comprehensive test coverage
+
+* Key Design Decisions
+
+** 1. Chunking Strategy
+- *Approach*: Semantic chunking based on org-mode structure
+- *Rationale*: Preserve document hierarchy and context
+- *Implementation*: Split on headers, paragraphs, and logical sections
+
+** 2. Embedding Model Selection
+- *Approach*: Support multiple Ollama models with configuration
+- *Default*: =mxbai-embed-large= for high-quality embeddings
+- *Rationale*: Local models provide privacy and cost control
+
+** 3. Vector Search Strategy
+- *Approach*: Qdrant for production-grade vector search
+- *Configuration*: Configurable similarity thresholds and result limits
+- *Optimization*: Index tuning for document size and search patterns
+
+** 4. MCP Protocol Implementation
+- *Transport*: HTTP with Server-Sent Events for streaming
+- *Format*: JSON-RPC 2.0 for standardized communication
+- *Tools*: Rich set of search and analysis tools
+
+* Configuration Management
+
+** Environment Variables
+- =QDRANT_URL=: Qdrant server connection string
+- =OLLAMA_URL=: Ollama API endpoint
+- =NOTES_DIR=: Directory containing org-mode files
+- =EMBEDDING_MODEL=: Ollama embedding model name
+- =MCP_PORT=: MCP server port
+- =LOG_LEVEL=: Logging verbosity
+
+** Configuration Files
+- =config.edn=: Main configuration with defaults
+- =models.edn=: Embedding model configurations
+- =search.edn=: Search engine parameters
+- =graph.edn=: Knowledge graph settings
+
+* Testing Strategy
+
+** Unit Tests
+- Document parsing and chunking
+- Vector operations and similarity search
+- MCP protocol handling
+- Knowledge graph algorithms
+
+** Integration Tests
+- End-to-end document ingestion
+- Search query processing
+- MCP tool execution
+- File watching and updates
+
+** Performance Tests
+- Large document collection handling
+- Search response times
+- Memory usage optimization
+- Concurrent request handling
+
+* Monitoring and Observability
+
+** Metrics
+- Document ingestion rates
+- Search query latency
+- Vector database performance
+- MCP server response times
+
+** Logging
+- Structured logging with context
+- Error tracking and alerting
+- Performance monitoring
+- Audit trail for data changes
+
+* Security Considerations
+
+** Data Privacy
+- All processing occurs locally
+- No external API calls for sensitive content
+- Configurable data retention policies
+- Secure file access controls
+
+** API Security
+- Authentication for MCP connections
+- Rate limiting for API endpoints
+- Input validation and sanitization
+- Secure configuration management
+
+* Future Enhancements
+
+** Advanced Features
+- Multi-modal document support (images, PDFs)
+- Real-time collaborative editing integration
+- Advanced knowledge graph visualization
+- Machine learning-powered concept extraction
+
+** Performance Optimizations
+- Distributed vector search
+- Incremental indexing strategies
+- Caching layers for frequent queries
+- Parallel processing pipelines
+
+** Integration Possibilities
+- Emacs org-roam integration
+- VS Code extension support
+- Jupyter notebook integration
+- Web-based knowledge explorer
+
+* Success Metrics
+
+** Functional Metrics
+- Search relevance accuracy > 85%
+- Document ingestion speed > 100 docs/minute
+- Search response time < 500ms
+- Knowledge graph completeness > 90%
+
+** Operational Metrics
+- System uptime > 99.9%
+- Error rate < 0.1%
+- Memory usage < 2GB for 10K documents
+- CPU usage < 50% under normal load
+
+* Risks and Mitigations
+
+** Technical Risks
+- *Qdrant dependency*: Mitigate with containerization and backup strategies
+- *Ollama model availability*: Support multiple embedding models
+- *Memory usage with large corpora*: Implement streaming and pagination
+- *Search result quality*: Continuous evaluation and model tuning
+
+** Operational Risks
+- *Configuration complexity*: Provide sensible defaults and validation
+- *File system changes*: Robust error handling and recovery
+- *Network connectivity*: Graceful degradation for offline operation
+- *Data corruption*: Regular backups and integrity checks
+
+This architectural plan provides a comprehensive foundation for implementing the MCP document knowledge base system while maintaining flexibility for future enhancements and ensuring robust operation in local environments.

@@ -1,0 +1,58 @@
+#+TITLE: Installation Guide
+#+AUTHOR: Christian Romney
+#+DATE: 2025-07-08
+#+STARTUP: overview
+#+OPTIONS: toc:2 num:nil
+#+PROPERTY: header-args :mkdirp yes
+
+* Installation
+
+Download from https://github.com/christianromney/mcp-document-kb
+
+* Usage
+
+** Run the project directly, via =:exec-fn=:
+
+#+BEGIN_SRC shell
+$ clojure -X:run-x
+Hello, Clojure!
+#+END_SRC
+
+** Run the project, overriding the name to be greeted:
+
+#+BEGIN_SRC shell
+$ clojure -X:run-x :name '"Someone"'
+Hello, Someone!
+#+END_SRC
+
+** Run the project directly, via =:main-opts= (=-m christianromney.mcp-document-kb=):
+
+#+BEGIN_SRC shell
+$ clojure -M:run-m
+Hello, World!
+#+END_SRC
+
+** Run the project, overriding the name to be greeted:
+
+#+BEGIN_SRC shell
+$ clojure -M:run-m Via-Main
+Hello, Via-Main!
+#+END_SRC
+
+** Run the project's tests (they'll fail until you edit them):
+
+#+BEGIN_SRC shell
+$ clojure -T:build test
+#+END_SRC
+
+** Run the project's CI pipeline and build an uberjar (this will fail until you edit the tests to pass):
+
+#+BEGIN_SRC shell
+$ clojure -T:build ci
+#+END_SRC
+
+** Run that uberjar:
+
+#+BEGIN_SRC shell
+$ java -jar target/mcp-document-kb-0.1.0-SNAPSHOT.jar
+#+END_SRC
